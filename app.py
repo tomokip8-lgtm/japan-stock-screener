@@ -1,11 +1,8 @@
 from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 import yfinance as yf
-
-DATA_DIR = Path('/Users/tomoki/Desktop/AI勉強用/株アプリ')
 
 
 def build_sample_history() -> pd.DataFrame:
@@ -39,23 +36,11 @@ def fetch_history(stock_code: str, period: str, offline_mode: bool) -> pd.DataFr
     return data
 
 
-def save_history_csv(stock_code: str, history: pd.DataFrame) -> Path:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = DATA_DIR / f'{stock_code}_daily.csv'
-
+def to_csv_bytes(history: pd.DataFrame) -> bytes:
     out = history.copy()
     out.index.name = 'Date'
-    out = out.reset_index()
-
-    if output_path.exists():
-        old = pd.read_csv(output_path)
-        merged = pd.concat([old, out], ignore_index=True)
-        merged = merged.drop_duplicates(subset=['Date'], keep='last').sort_values('Date')
-    else:
-        merged = out.sort_values('Date')
-
-    merged.to_csv(output_path, index=False, encoding='utf-8-sig')
-    return output_path
+    csv_text = out.reset_index().to_csv(index=False)
+    return csv_text.encode('utf-8-sig')
 
 
 def render_app() -> None:
@@ -65,9 +50,7 @@ def render_app() -> None:
 
     st.subheader('設定')
     offline_mode = st.checkbox('オフラインテストモード（ダミーデータを使用）', value=True)
-    st.write(f'CSV保存先: `{DATA_DIR}`')
-    if offline_mode:
-        st.info('オフラインテストモード: yfinance に接続せず、サンプル株価データで動作確認します。')
+    st.info('Streamlit Cloud対応: ローカル保存ではなくCSVダウンロードでデータを保持します。')
 
     code_col, period_col = st.columns([2, 1])
     with code_col:
@@ -91,15 +74,23 @@ def render_app() -> None:
             st.warning('データが取得できませんでした。銘柄コードをご確認ください。')
             st.stop()
 
-        save_path = save_history_csv(stock_code, history)
+        csv_bytes = to_csv_bytes(history)
+        filename = f'{stock_code}_daily.csv'
 
         if offline_mode:
-            st.success('オフラインテストデータの表示とCSV保存に成功しました。')
+            st.success('オフラインテストデータの表示に成功しました。')
         else:
             ticker = f'{stock_code}.T'
-            st.success(f'{ticker} の株価データ取得とCSV保存に成功しました。')
+            st.success(f'{ticker} の株価データ取得に成功しました。')
 
-        st.caption(f'保存ファイル: `{save_path}`')
+        st.download_button(
+            label='CSVをダウンロード',
+            data=csv_bytes,
+            file_name=filename,
+            mime='text/csv',
+            use_container_width=True,
+        )
+
         st.subheader('終値チャート')
         st.line_chart(history['Close'])
 
