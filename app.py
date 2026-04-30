@@ -11,7 +11,7 @@ import yfinance as yf
 
 WATCHLIST_DEFAULT = 'watchlist.csv'
 
-UNIVERSE = [
+REFERENCE_UNIVERSE = [
     {'code': '1332', 'name': 'ニッスイ', 'market': 'Prime', 'sector': '食品'},
     {'code': '1605', 'name': 'INPEX', 'market': 'Prime', 'sector': 'エネルギー'},
     {'code': '2502', 'name': 'アサヒ', 'market': 'Prime', 'sector': '食品'},
@@ -24,6 +24,14 @@ UNIVERSE = [
     {'code': '9983', 'name': 'ファストリ', 'market': 'Prime', 'sector': '小売'},
     {'code': '9348', 'name': 'ispace', 'market': 'Standard', 'sector': 'サービス'},
 ]
+
+
+@st.cache_data
+def load_universe(csv_path: str = "stocks.csv") -> pd.DataFrame:
+    csv_file = Path(csv_path)
+    if csv_file.exists():
+        return pd.read_csv(csv_file, dtype={"code": str})
+    return pd.DataFrame(REFERENCE_UNIVERSE)
 
 
 def zscore_in_sector(df: pd.DataFrame, col: str, ascending: bool) -> pd.Series:
@@ -131,7 +139,7 @@ def render_app() -> None:
     save_dir = st.text_input('ローカル保存先フォルダ', value='/Users/tomoki/Desktop/AI勉強用/株アプリ')
     period = st.selectbox('分析期間', ['6mo', '1y', '2y', '5y'], index=1)
 
-    universe_df = pd.DataFrame(UNIVERSE)
+    universe_df = load_universe()
     st.dataframe(universe_df, use_container_width=True)
 
     if st.button('データを取得して分析', type='primary'):
