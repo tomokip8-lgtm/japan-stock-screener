@@ -108,7 +108,5 @@ def render_app() -> None:
         st.dataframe(history.tail(10), use_container_width=True)
 
 
-st.title("需給分析つき日本株スクリーナー")
-st.write("アプリ起動成功")
 if __name__ == '__main__':
     render_app()
